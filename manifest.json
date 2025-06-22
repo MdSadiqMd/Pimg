@@ -1,11 +1,11 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
-	"version": "1.0.0",
-	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
-	"isDesktopOnly": false
+    "id": "pimg",
+    "name": "Pimg",
+    "version": "0.5.0",
+    "minAppVersion": "0.15.0",
+    "description": "Pimg uploads your images to github, saving your memeory",
+    "author": "MdSadiqMd",
+    "authorUrl": "https://github.com/MdSadiqMd",
+    "fundingUrl": "https://github.com/sponsors/MdSadiqMd/dashboard",
+    "isDesktopOnly": false
 }

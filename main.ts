@@ -1,7 +1,9 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 
 interface GitHubUploaderSettings {
-    workerUrl: string;
+    githubAccessToken: string;
+    githubUsername: string;
+    githubRepository: string;
     enableOnPaste: boolean;
     enableOnDrop: boolean;
     showUploadProgress: boolean;
@@ -9,12 +11,16 @@ interface GitHubUploaderSettings {
 }
 
 const DEFAULT_SETTINGS: GitHubUploaderSettings = {
-    workerUrl: process.env.WORKER_URL as string,
+    githubAccessToken: "",
+    githubUsername: "",
+    githubRepository: "",
     enableOnPaste: true,
     enableOnDrop: true,
     showUploadProgress: true,
     fallbackToLocal: true
 };
+
+const WORKER_URL = "https://obsidian-github-worker.mohammadsadiq4950.workers.dev";
 
 export default class GitHubUploaderPlugin extends Plugin {
     settings: GitHubUploaderSettings;
@@ -22,6 +28,8 @@ export default class GitHubUploaderPlugin extends Plugin {
 
     async onload() {
         await this.loadSettings();
+        this.register(() => document.body.removeClass('pimg-plugin-active'));
+        document.body.addClass('pimg-plugin-active');
         this.registerEvent(
             this.app.workspace.on('editor-paste', (event: ClipboardEvent, editor: Editor, view: MarkdownView) => {
                 if (this.settings.enableOnPaste) {
@@ -33,30 +41,13 @@ export default class GitHubUploaderPlugin extends Plugin {
             this.registerDragAndDrop();
         }
 
-        this.addCommand({
-            id: 'upload-image-github',
-            name: 'Upload image to GitHub',
-            editorCallback: (editor: Editor, view: MarkdownView) => {
-                this.showImageUploadModal(editor, view);
-            }
-        });
-
-        const ribbonIconEl = this.addRibbonIcon('image', 'GitHub Image Uploader', (evt: MouseEvent) => {
-            const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-            if (activeView) {
-                this.showImageUploadModal(activeView.editor, activeView);
-            } else {
-                new Notice('Please open a markdown file to upload images');
-            }
-        });
-        ribbonIconEl.addClass('github-uploader-ribbon-class');
         this.addSettingTab(new GitHubUploaderSettingsTab(this.app, this));
-
-        console.log('GitHub Uploader Plugin loaded');
+        // console.log('GitHub Uploader Plugin loaded');
     }
 
     onunload() {
-        console.log('GitHub Uploader Plugin unloaded');
+        document.body.removeClass('pimg-plugin-active');
+        // console.log('GitHub Uploader Plugin unloaded');
     }
 
     private async handlePaste(event: ClipboardEvent, editor: Editor, view: MarkdownView) {
@@ -64,18 +55,15 @@ export default class GitHubUploaderPlugin extends Plugin {
         if (!clipboardData) return;
 
         const items = clipboardData.items;
-        let hasImage = false;
-
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
             if (item.type.startsWith('image/')) {
-                hasImage = true;
                 const file = item.getAsFile();
                 if (file) {
                     event.preventDefault();
                     await this.uploadImageFile(file, editor, view);
+                    break;
                 }
-                break;
             }
         }
     }
@@ -97,6 +85,7 @@ export default class GitHubUploaderPlugin extends Plugin {
                 if (file.type.startsWith('image/')) {
                     event.preventDefault();
                     await this.uploadImageFile(file, activeView.editor, activeView);
+                    break;
                 }
             }
         });
@@ -109,7 +98,6 @@ export default class GitHubUploaderPlugin extends Plugin {
         }
 
         this.isUploading = true;
-
         let notice: Notice | null = null;
         if (this.settings.showUploadProgress) {
             notice = new Notice('Uploading image to GitHub...', 0);
@@ -122,19 +110,14 @@ export default class GitHubUploaderPlugin extends Plugin {
                 const imageMarkdown = `![${file.name}](${imageUrl})`;
                 editor.replaceSelection(imageMarkdown);
 
-                if (notice) {
-                    notice.hide();
-                    new Notice('Image uploaded successfully!');
-                }
+                if (notice) notice.hide();
+                new Notice('✅ Image uploaded successfully!');
             } else {
                 throw new Error('Upload failed');
             }
         } catch (error) {
             console.error('GitHub upload failed:', error);
-
-            if (notice) {
-                notice.hide();
-            }
+            if (notice) notice.hide();
 
             if (this.settings.fallbackToLocal) {
                 new Notice('GitHub upload failed. Saving image locally...');
@@ -150,8 +133,11 @@ export default class GitHubUploaderPlugin extends Plugin {
     private async uploadToGitHub(file: File): Promise<string | null> {
         const formData = new FormData();
         formData.append('image', file);
+        formData.append('githubAccessToken', this.settings.githubAccessToken);
+        formData.append('githubUsername', this.settings.githubUsername);
+        formData.append('githubRepository', this.settings.githubRepository);
 
-        const response = await fetch(this.settings.workerUrl, {
+        const response = await fetch(WORKER_URL, {
             method: 'POST',
             body: formData,
         });
@@ -162,12 +148,7 @@ export default class GitHubUploaderPlugin extends Plugin {
         }
 
         const result = await response.json();
-
-        if (result.success) {
-            return result.imageUrl;
-        } else {
-            throw new Error(result.error || 'Unknown error');
-        }
+        return result.success ? result.imageUrl : null;
     }
 
     private async fallbackToLocalSave(file: File, editor: Editor, view: MarkdownView) {
@@ -176,13 +157,17 @@ export default class GitHubUploaderPlugin extends Plugin {
             const fileExtension = file.name.split('.').pop() || 'png';
             const fileName = `github-fallback-${timestamp}.${fileExtension}`;
             const adapter = this.app.vault.adapter;
-            const attachmentFolder = adapter.getResourcePath
+            const attachmentFolder = typeof adapter.getResourcePath === 'function'
                 ? adapter.getResourcePath('')
                 : '';
-            const filePath = attachmentFolder ? `${attachmentFolder}/${fileName}` : fileName;
+
+            const filePath = attachmentFolder
+                ? `${attachmentFolder}/${fileName}`
+                : fileName;
+
             const arrayBuffer = await file.arrayBuffer();
             const createdFile = await this.app.vault.createBinary(filePath, arrayBuffer);
-            const imageMarkdown = `![${file.name}](${this.app.vault.adapter.getResourcePath(createdFile.path)})`;
+            const imageMarkdown = `![${file.name}](${this.app.vault.getResourcePath(createdFile)})`;
             editor.replaceSelection(imageMarkdown);
 
             new Notice('Image saved locally as fallback');
@@ -192,90 +177,12 @@ export default class GitHubUploaderPlugin extends Plugin {
         }
     }
 
-    private showImageUploadModal(editor: Editor, view: MarkdownView) {
-        new ImageUploadModal(this.app, this, editor, view).open();
-    }
-
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     }
 
     async saveSettings() {
         await this.saveData(this.settings);
-    }
-}
-
-class ImageUploadModal extends Modal {
-    plugin: GitHubUploaderPlugin;
-    editor: Editor;
-    view: MarkdownView;
-
-    constructor(app: App, plugin: GitHubUploaderPlugin, editor: Editor, view: MarkdownView) {
-        super(app);
-        this.plugin = plugin;
-        this.editor = editor;
-        this.view = view;
-    }
-
-    onOpen() {
-        const { contentEl } = this;
-        contentEl.empty();
-
-        contentEl.createEl('h2', { text: 'Upload Image to GitHub' });
-
-        const inputEl = contentEl.createEl('input', {
-            type: 'file',
-            attr: {
-                accept: 'image/*',
-                multiple: 'true'
-            }
-        });
-
-        const uploadBtn = contentEl.createEl('button', {
-            text: 'Upload',
-            cls: 'mod-cta'
-        });
-
-        uploadBtn.onclick = async () => {
-            const files = inputEl.files;
-            if (files && files.length > 0) {
-                for (let i = 0; i < files.length; i++) {
-                    await this.plugin.uploadImageFile(files[i], this.editor, this.view);
-                }
-                this.close();
-            }
-        };
-
-        contentEl.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            contentEl.addClass('drag-over');
-        });
-
-        contentEl.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            contentEl.removeClass('drag-over');
-        });
-
-        contentEl.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            contentEl.removeClass('drag-over');
-
-            const files = e.dataTransfer?.files;
-            if (files && files.length > 0) {
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    if (file.type.startsWith('image/')) {
-                        await this.plugin.uploadImageFile(file, this.editor, this.view);
-                    }
-                }
-                this.close();
-            }
-        });
-    }
-
-    onClose() {
-        const { contentEl } = this;
-        contentEl.empty();
     }
 }
 
@@ -290,9 +197,55 @@ class GitHubUploaderSettingsTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        containerEl.createEl('h2', { text: 'GitHub Uploader Settings Made by @Md_Sadiq_Md' });
+        containerEl.addClass('pimg-settings');
 
-        new Setting(containerEl)
+        containerEl.createEl('h1', {
+            text: 'Pimg Settings',
+            cls: 'pimg-settings-title'
+        });
+        containerEl.createEl('p', {
+            text: 'Made by @Md_Sadiq_Md',
+            cls: 'pimg-credits'
+        });
+
+        const credsGroup = containerEl.createDiv('pimg-settings-group');
+
+        new Setting(credsGroup)
+            .setName('GitHub Access Token')
+            .setDesc('Get your access token from GitHub')
+            .addText(text => text
+                .setPlaceholder('')
+                .setValue(this.plugin.settings.githubAccessToken)
+                .onChange(async (value) => {
+                    this.plugin.settings.githubAccessToken = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(credsGroup)
+            .setName('GitHub User Name')
+            .setDesc('Your GitHub username')
+            .addText(text => text
+                .setPlaceholder('')
+                .setValue(this.plugin.settings.githubUsername)
+                .onChange(async (value) => {
+                    this.plugin.settings.githubUsername = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(credsGroup)
+            .setName('GitHub Repository Name')
+            .setDesc('Your Obsidian GitHub repository name')
+            .addText(text => text
+                .setPlaceholder('')
+                .setValue(this.plugin.settings.githubRepository)
+                .onChange(async (value) => {
+                    this.plugin.settings.githubRepository = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        const toggleGroup = containerEl.createDiv('pimg-settings-group');
+
+        new Setting(toggleGroup)
             .setName('Enable paste upload')
             .setDesc('Automatically upload images when pasted from clipboard')
             .addToggle(toggle => toggle
@@ -302,7 +255,7 @@ class GitHubUploaderSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        new Setting(containerEl)
+        new Setting(toggleGroup)
             .setName('Enable drag & drop upload')
             .setDesc('Automatically upload images when dragged and dropped')
             .addToggle(toggle => toggle
@@ -312,7 +265,7 @@ class GitHubUploaderSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        new Setting(containerEl)
+        new Setting(toggleGroup)
             .setName('Show upload progress')
             .setDesc('Display notification during image upload')
             .addToggle(toggle => toggle
@@ -322,7 +275,7 @@ class GitHubUploaderSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        new Setting(containerEl)
+        new Setting(toggleGroup)
             .setName('Fallback to local storage')
             .setDesc('Save images locally if GitHub upload fails')
             .addToggle(toggle => toggle

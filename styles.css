@@ -1,8 +1,57 @@
-/*
+.pimg-plugin-active {
+    --pimg-accent: #8b6cef;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.pimg-upload-modal {
+    padding: 18px;
+}
 
-If your plugin does not need CSS, delete this file.
+.pimg-modal-title {
+    margin-top: 0;
+    color: var(--pimg-accent);
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: 0.8em;
+}
 
-*/
+.pimg-file-input {
+    display: block;
+    width: 100%;
+    margin: 1em 0;
+}
+
+.pimg-upload-btn {
+    width: 100%;
+    margin-top: 1em;
+}
+
+.pimg-drag-over {
+    border: 2px dashed var(--pimg-accent) !important;
+    background-color: var(--background-modifier-hover);
+}
+
+.pimg-settings-title {
+    margin-top: 0;
+    color: var(--pimg-accent);
+}
+
+.pimg-credits {
+    margin-top: -1em;
+    font-style: italic;
+    opacity: 0.7;
+}
+
+.pimg-settings-group {
+    margin-bottom: 2em;
+    padding-bottom: 1.5em;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pimg-settings-group:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.pimg-ribbon-icon:hover {
+    color: var(--pimg-accent);
+    cursor: pointer;
+}
