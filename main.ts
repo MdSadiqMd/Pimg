@@ -1,6 +1,7 @@
 import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 
-interface GitHubUploaderSettings {
+interface PimgSettings {
+    pimgAPIKey: string;
     githubAccessToken: string;
     githubUsername: string;
     githubRepository: string;
@@ -8,22 +9,25 @@ interface GitHubUploaderSettings {
     enableOnDrop: boolean;
     showUploadProgress: boolean;
     fallbackToLocal: boolean;
+    creditsBalance: number;
 }
 
-const DEFAULT_SETTINGS: GitHubUploaderSettings = {
+const DEFAULT_SETTINGS: PimgSettings = {
+    pimgAPIKey: "",
     githubAccessToken: "",
     githubUsername: "",
     githubRepository: "",
     enableOnPaste: true,
     enableOnDrop: true,
     showUploadProgress: true,
-    fallbackToLocal: true
+    fallbackToLocal: true,
+    creditsBalance: 500,
 };
 
 const WORKER_URL = "https://obsidian-github-worker.mohammadsadiq4950.workers.dev";
 
-export default class GitHubUploaderPlugin extends Plugin {
-    settings: GitHubUploaderSettings;
+export default class PimgPlugin extends Plugin {
+    settings: PimgSettings;
     private isUploading = false;
 
     async onload() {
@@ -41,13 +45,13 @@ export default class GitHubUploaderPlugin extends Plugin {
             this.registerDragAndDrop();
         }
 
-        this.addSettingTab(new GitHubUploaderSettingsTab(this.app, this));
-        // console.log('GitHub Uploader Plugin loaded');
+        this.addSettingTab(new PimgSettingsTab(this.app, this));
+        // console.log('Pimg Plugin loaded');
     }
 
     onunload() {
         document.body.removeClass('pimg-plugin-active');
-        // console.log('GitHub Uploader Plugin unloaded');
+        // console.log('Pimg Plugin unloaded');
     }
 
     private async handlePaste(event: ClipboardEvent, editor: Editor, view: MarkdownView) {
@@ -96,6 +100,14 @@ export default class GitHubUploaderPlugin extends Plugin {
             new Notice('Another upload is in progress. Please wait.');
             return;
         }
+        if (!this.settings.pimgAPIKey || this.settings.pimgAPIKey === "") {
+            new Notice('Pimg API key is not set. Please set it in the plugin settings.');
+            return;
+        }
+        if (this.settings.creditsBalance <= 0) {
+            new Notice('No credits remaining. Please purchase more credits.');
+            return;
+        }
 
         this.isUploading = true;
         let notice: Notice | null = null;
@@ -109,7 +121,8 @@ export default class GitHubUploaderPlugin extends Plugin {
             if (imageUrl) {
                 const imageMarkdown = `![${file.name}](${imageUrl})`;
                 editor.replaceSelection(imageMarkdown);
-
+                this.settings.creditsBalance--;
+                await this.saveSettings();
                 if (notice) notice.hide();
                 new Notice('✅ Image uploaded successfully!');
             } else {
@@ -133,6 +146,7 @@ export default class GitHubUploaderPlugin extends Plugin {
     private async uploadToGitHub(file: File): Promise<string | null> {
         const formData = new FormData();
         formData.append('image', file);
+        formData.append('pimgAPIKey', this.settings.pimgAPIKey);
         formData.append('githubAccessToken', this.settings.githubAccessToken);
         formData.append('githubUsername', this.settings.githubUsername);
         formData.append('githubRepository', this.settings.githubRepository);
@@ -153,27 +167,21 @@ export default class GitHubUploaderPlugin extends Plugin {
 
     private async fallbackToLocalSave(file: File, editor: Editor, view: MarkdownView) {
         try {
-            const timestamp = Date.now();
-            const fileExtension = file.name.split('.').pop() || 'png';
-            const fileName = `github-fallback-${timestamp}.${fileExtension}`;
-            const adapter = this.app.vault.adapter;
-            const attachmentFolder = typeof adapter.getResourcePath === 'function'
-                ? adapter.getResourcePath('')
-                : '';
-
-            const filePath = attachmentFolder
-                ? `${attachmentFolder}/${fileName}`
-                : fileName;
-
-            const arrayBuffer = await file.arrayBuffer();
-            const createdFile = await this.app.vault.createBinary(filePath, arrayBuffer);
-            const imageMarkdown = `![${file.name}](${this.app.vault.getResourcePath(createdFile)})`;
-            editor.replaceSelection(imageMarkdown);
-
-            new Notice('Image saved locally as fallback');
-        } catch (error) {
-            console.error('Fallback save failed:', error);
-            new Notice('Both GitHub upload and local fallback failed');
+            const fileName = file.name;
+            const sourcePath = view.file?.path ?? "";
+            const vaultPath = await this.app.fileManager.getAvailablePathForAttachment(
+                fileName,
+                sourcePath
+            );
+            const data = await file.arrayBuffer();
+            const created = await this.app.vault.createBinary(vaultPath, data);
+            const url = this.app.vault.getResourcePath(created);
+            editor.replaceSelection(`![${file.name}](${url})`);
+            new Notice("Image saved locally as fallback");
+        }
+        catch (err) {
+            console.error("Fallback save failed:", err);
+            new Notice("Both GitHub upload and local fallback failed");
         }
     }
 
@@ -186,10 +194,10 @@ export default class GitHubUploaderPlugin extends Plugin {
     }
 }
 
-class GitHubUploaderSettingsTab extends PluginSettingTab {
-    plugin: GitHubUploaderPlugin;
+class PimgSettingsTab extends PluginSettingTab {
+    plugin: PimgPlugin;
 
-    constructor(app: App, plugin: GitHubUploaderPlugin) {
+    constructor(app: App, plugin: PimgPlugin) {
         super(app, plugin);
         this.plugin = plugin;
     }
@@ -199,16 +207,38 @@ class GitHubUploaderSettingsTab extends PluginSettingTab {
         containerEl.empty();
         containerEl.addClass('pimg-settings');
 
-        containerEl.createEl('h1', {
+        const headerContainer = containerEl.createDiv({ cls: 'pimg-settings-header' });
+        headerContainer.createEl('h1', {
             text: 'Pimg Settings',
             cls: 'pimg-settings-title'
         });
+
+        const creditsEl = headerContainer.createSpan({ cls: 'pimg-credits-display' });
+        creditsEl.setText(`Credits Left: ${this.plugin.settings.creditsBalance}`);
+
         containerEl.createEl('p', {
             text: 'Made by @Md_Sadiq_Md',
             cls: 'pimg-credits'
         });
 
-        const credsGroup = containerEl.createDiv('pimg-settings-group');
+        const configSection = containerEl.createDiv({ cls: 'pimg-settings-section' });
+        configSection.createEl('h2', {
+            text: 'Configuration',
+            cls: 'pimg-section-title'
+        });
+        const credsGroup = configSection.createDiv({ cls: 'pimg-settings-group' });
+
+        new Setting(credsGroup)
+            .setName('Pimg API Key')
+            .setDesc('Get your API key from Pimg')
+            .addText(text => text
+                .setPlaceholder('')
+                .setValue(this.plugin.settings.pimgAPIKey)
+                .onChange(async (value) => {
+                    this.plugin.settings.pimgAPIKey = value;
+                    await this.plugin.saveSettings();
+                })
+            );
 
         new Setting(credsGroup)
             .setName('GitHub Access Token')
@@ -243,7 +273,12 @@ class GitHubUploaderSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        const toggleGroup = containerEl.createDiv('pimg-settings-group');
+        const behaviorSection = containerEl.createDiv({ cls: 'pimg-settings-section' });
+        behaviorSection.createEl('h2', {
+            text: 'Behavior Settings',
+            cls: 'pimg-section-title'
+        });
+        const toggleGroup = behaviorSection.createDiv({ cls: 'pimg-settings-group' });
 
         new Setting(toggleGroup)
             .setName('Enable paste upload')
