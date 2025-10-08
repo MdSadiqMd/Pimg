@@ -1,9 +1,9 @@
 {
     "id": "pimg",
     "name": "Pimg",
-    "version": "0.5.0",
+    "version": "1.0.0",
     "minAppVersion": "0.15.0",
-    "description": "Pimg uploads your images to github, saving your memeory",
+    "description": "Pimg encodes your images to Base64 and uploads them to GitHub, saving storage space",
     "author": "MdSadiqMd",
     "authorUrl": "https://github.com/MdSadiqMd",
     "fundingUrl": "https://github.com/sponsors/MdSadiqMd/dashboard",
