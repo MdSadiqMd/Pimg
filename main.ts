@@ -1,30 +1,24 @@
 import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 
 interface PimgSettings {
-    pimgAPIKey: string;
     githubAccessToken: string;
     githubUsername: string;
-    githubRepository: string;
+    workerUrl: string;
     enableOnPaste: boolean;
     enableOnDrop: boolean;
     showUploadProgress: boolean;
     fallbackToLocal: boolean;
-    creditsBalance: number;
 }
 
 const DEFAULT_SETTINGS: PimgSettings = {
-    pimgAPIKey: "",
     githubAccessToken: "",
     githubUsername: "",
-    githubRepository: "",
+    workerUrl: "https://your-worker-name.your-subdomain.workers.dev",
     enableOnPaste: true,
     enableOnDrop: true,
     showUploadProgress: true,
     fallbackToLocal: true,
-    creditsBalance: 500,
 };
-
-const WORKER_URL = "https://obsidian-github-worker.mohammadsadiq4950.workers.dev";
 
 export default class PimgPlugin extends Plugin {
     settings: PimgSettings;
@@ -100,58 +94,54 @@ export default class PimgPlugin extends Plugin {
             new Notice('Another upload is in progress. Please wait.');
             return;
         }
-        if (!this.settings.pimgAPIKey || this.settings.pimgAPIKey === "") {
-            new Notice('Pimg API key is not set. Please set it in the plugin settings.');
+        if (!this.settings.githubAccessToken || this.settings.githubAccessToken === "") {
+            new Notice('GitHub Access Token is not set. Please set it in the plugin settings.');
             return;
         }
-        if (this.settings.creditsBalance <= 0) {
-            new Notice('No credits remaining. Please purchase more credits.');
+        if (!this.settings.workerUrl || this.settings.workerUrl === "") {
+            new Notice('Worker URL is not set. Please set it in the plugin settings.');
             return;
         }
 
         this.isUploading = true;
         let notice: Notice | null = null;
         if (this.settings.showUploadProgress) {
-            notice = new Notice('Uploading image to GitHub...', 0);
+            notice = new Notice('Uploading image...', 0);
         }
 
         try {
-            const imageUrl = await this.uploadToGitHub(file);
-
+            const imageUrl = await this.uploadToGist(file);
             if (imageUrl) {
                 const imageMarkdown = `![${file.name}](${imageUrl})`;
                 editor.replaceSelection(imageMarkdown);
-                this.settings.creditsBalance--;
                 await this.saveSettings();
                 if (notice) notice.hide();
-                new Notice('✅ Image uploaded successfully!');
+                new Notice('✅ Image uploaded successfully');
             } else {
                 throw new Error('Upload failed');
             }
         } catch (error) {
-            console.error('GitHub upload failed:', error);
+            console.error('Cloud upload failed:', error);
             if (notice) notice.hide();
 
             if (this.settings.fallbackToLocal) {
-                new Notice('GitHub upload failed. Saving image locally...');
+                new Notice('Upload failed. Saving image locally...');
                 await this.fallbackToLocalSave(file, editor, view);
             } else {
-                new Notice(`GitHub upload failed: ${error.message}`);
+                new Notice(`Upload failed: ${error.message}`);
             }
         } finally {
             this.isUploading = false;
         }
     }
 
-    private async uploadToGitHub(file: File): Promise<string | null> {
+    private async uploadToGist(file: File): Promise<string | null> {
         const formData = new FormData();
         formData.append('image', file);
-        formData.append('pimgAPIKey', this.settings.pimgAPIKey);
         formData.append('githubAccessToken', this.settings.githubAccessToken);
         formData.append('githubUsername', this.settings.githubUsername);
-        formData.append('githubRepository', this.settings.githubRepository);
 
-        const response = await fetch(WORKER_URL, {
+        const response = await fetch(this.settings.workerUrl, {
             method: 'POST',
             body: formData,
         });
@@ -181,7 +171,7 @@ export default class PimgPlugin extends Plugin {
         }
         catch (err) {
             console.error("Fallback save failed:", err);
-            new Notice("Both GitHub upload and local fallback failed");
+            new Notice("Both Cloud upload and local fallback failed");
         }
     }
 
@@ -213,9 +203,6 @@ class PimgSettingsTab extends PluginSettingTab {
             cls: 'pimg-settings-title'
         });
 
-        const creditsEl = headerContainer.createSpan({ cls: 'pimg-credits-display' });
-        creditsEl.setText(`Credits Left: ${this.plugin.settings.creditsBalance}`);
-
         containerEl.createEl('p', {
             text: 'Made by @Md_Sadiq_Md',
             cls: 'pimg-credits'
@@ -229,33 +216,22 @@ class PimgSettingsTab extends PluginSettingTab {
         const credsGroup = configSection.createDiv({ cls: 'pimg-settings-group' });
 
         new Setting(credsGroup)
-            .setName('Pimg API Key')
-            .setDesc('Get your API key from Pimg')
+            .setName('GitHub Access Token')
+            .setDesc('Personal access token with gist permissions from GitHub')
             .addText(text => text
-                .setPlaceholder('')
-                .setValue(this.plugin.settings.pimgAPIKey)
+                .setPlaceholder('ghp_xxxxxxxxxxxxxxxxxxxx')
+                .setValue(this.plugin.settings.githubAccessToken)
                 .onChange(async (value) => {
-                    this.plugin.settings.pimgAPIKey = value;
+                    this.plugin.settings.githubAccessToken = value;
                     await this.plugin.saveSettings();
                 })
             );
 
         new Setting(credsGroup)
-            .setName('GitHub Access Token')
-            .setDesc('Get your access token from GitHub')
-            .addText(text => text
-                .setPlaceholder('')
-                .setValue(this.plugin.settings.githubAccessToken)
-                .onChange(async (value) => {
-                    this.plugin.settings.githubAccessToken = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(credsGroup)
-            .setName('GitHub User Name')
+            .setName('GitHub Username')
             .setDesc('Your GitHub username')
             .addText(text => text
-                .setPlaceholder('')
+                .setPlaceholder('your-username')
                 .setValue(this.plugin.settings.githubUsername)
                 .onChange(async (value) => {
                     this.plugin.settings.githubUsername = value;
@@ -263,13 +239,13 @@ class PimgSettingsTab extends PluginSettingTab {
                 }));
 
         new Setting(credsGroup)
-            .setName('GitHub Repository Name')
-            .setDesc('Your Obsidian GitHub repository name')
+            .setName('Cloudflare Worker URL')
+            .setDesc('URL of your deployed Cloudflare Worker')
             .addText(text => text
-                .setPlaceholder('')
-                .setValue(this.plugin.settings.githubRepository)
+                .setPlaceholder('https://your-worker.your-subdomain.workers.dev')
+                .setValue(this.plugin.settings.workerUrl)
                 .onChange(async (value) => {
-                    this.plugin.settings.githubRepository = value;
+                    this.plugin.settings.workerUrl = value;
                     await this.plugin.saveSettings();
                 }));
 
@@ -312,7 +288,7 @@ class PimgSettingsTab extends PluginSettingTab {
 
         new Setting(toggleGroup)
             .setName('Fallback to local storage')
-            .setDesc('Save images locally if GitHub upload fails')
+            .setDesc('Save images locally if Cloud upload fails')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.fallbackToLocal)
                 .onChange(async (value) => {
