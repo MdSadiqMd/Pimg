@@ -1,94 +1,98 @@
-# Obsidian Sample Plugin
+## Pimg - GitHub Gist Image Storage for Obsidian
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+> **Keep your vault lightweight while storing images securely in the cloud**
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+A powerful Obsidian plugin that automatically uploads your images to GitHub Gists using base64 encoding, keeping your vault size minimal while ensuring your images are always accessible - even in PDF exports!
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+### ✨ Features
+- 🖼️ **Automatic Image Upload** - Drag & drop or paste images directly into your notes
+- 🔒 **Private Storage** - Images stored securely in GitHub Secret Gists  
+- 📄 **PDF Export Compatible** - Works perfectly with Obsidian's PDF export feature
+- ⚡ **Lightweight Vault** - Only image URLs stored locally, not the actual files
+- 🚀 **Fast Loading** - Images served through Cloudflare Workers CDN
+- 🔄 **Fallback Support** - Automatically saves locally if upload fails
+- ⚙️ **Highly Configurable** - Control paste/drop behavior, progress notifications, and more
 
-## First time developing plugins?
-
-Quick starting guide for new plugin devs:
-
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
-
-## Releasing new releases
-
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
-
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
-
-## Adding your plugin to the community plugin list
-
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
-
-## How to use
-
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint .\src\`
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
+```mermaid
+graph LR
+    A[Image Upload] --> B[Base64 Encoding]
+    B --> C[GitHub Secret Gist]
+    C --> D[Cloudflare Worker Proxy]
+    D --> E[Public Image URL]
+    E --> F[Obsidian Display]
+    E --> G[PDF Export ✅]
 ```
 
-If you have multiple URLs, you can also do:
+### 🛠️ Installation
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
+#### Step 1: Install the Plugin
+1. Open Obsidian Settings
+2. Go to Community Plugins
+3. Search for "Pimg"
+4. Click Install and Enable
 
-## API Documentation
+#### Step 2: Deploy the Cloudflare Worker
+1. **Clone the worker repository:**
+   ```bash
+   git clone https://github.com/MdSadiqMd/Pimg-Obsidian-Worker.git
+   cd Pimg-Obsidian-Worker
+   ```
 
-See https://github.com/obsidianmd/obsidian-api
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Login to Cloudflare:**
+   ```bash
+   npx wrangler login
+   ```
+
+4. **Deploy the worker:**
+   ```bash
+   npm run deploy
+   ```
+
+5. **Note your worker URL** (e.g., `https://pimg.your-subdomain.workers.dev`)
+
+#### Step 3: Create GitHub Personal Access Token
+1. Go to [GitHub Settings → Developer Settings → Personal Access Tokens](https://github.com/settings/tokens)
+2. Click "Generate new token (classic)"
+3. Give it a descriptive name (e.g., "Pimg Obsidian Plugin")
+4. Select the **`gist`** scope (Full control of gists)
+5. Copy the generated token immediately
+
+#### Step 4: Configure the Plugin
+1. Open Obsidian Settings → Community Plugins → Pimg
+2. Enter your **GitHub Access Token**
+3. Enter your **GitHub Username**
+4. Enter your **Cloudflare Worker URL**
+5. Configure behavior settings as desired
+
+### 📱 Usage
+1. **Paste**: Copy an image and paste it into your note with `Ctrl/Cmd+V`
+2. **Drag & Drop**: Drag image files directly into your editor
+3. **Automatic**: The plugin handles upload and URL generation automatically
+
+### 📄 License
+This project is licensed under the [0BSD License](LICENSE) - see the LICENSE file for details.
+
+### 💖 Support
+If you find this plugin helpful, consider supporting its development:
+
+- ⭐ Star this repository
+- 🐛 Report bugs and suggest features
+- ☕ [Buy me a coffee](https://github.com/sponsors/MdSadiqMd)
+- 🔄 Share with other Obsidian users
+
+---
+
+<p align="center">
+  <strong>Made with ❤️ by <a href="https://x.com/Md_Sadiq_Md">@MdSadiqMd</a></strong>
+</p>
+
+<p align="center">
+  <a href="https://obsidian.md">
+    <img src="https://img.shields.io/badge/Made%20for-Obsidian-8b6cef?style=for-the-badge&logo=obsidian" alt="Made for Obsidian">
+  </a>
+</p>
