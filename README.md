@@ -1,4 +1,4 @@
-## Pimg - GitHub Gist Image Storage for Obsidian
+# Pimg
 
 > **Keep your vault lightweight while storing images securely in the cloud**
 
@@ -13,15 +13,8 @@ A powerful Obsidian plugin that automatically uploads your images to GitHub Gist
 - 🔄 **Fallback Support** - Automatically saves locally if upload fails
 - ⚙️ **Highly Configurable** - Control paste/drop behavior, progress notifications, and more
 
-```mermaid
-graph LR
-    A[Image Upload] --> B[Base64 Encoding]
-    B --> C[GitHub Secret Gist]
-    C --> D[Cloudflare Worker Proxy]
-    D --> E[Public Image URL]
-    E --> F[Obsidian Display]
-    E --> G[PDF Export ✅]
-```
+### 🏗️ Architecture Diagram
+<img width="1594" height="914" alt="diagram-export-10-9-2025-12_24_57-AM" src="https://github.com/user-attachments/assets/d267e1f4-ae19-4cf9-a531-57db24d5379f" />
 
 ### 🛠️ Installation
 
@@ -69,21 +62,13 @@ graph LR
 4. Enter your **Cloudflare Worker URL**
 5. Configure behavior settings as desired
 
-### 📱 Usage
+### Usage
 1. **Paste**: Copy an image and paste it into your note with `Ctrl/Cmd+V`
 2. **Drag & Drop**: Drag image files directly into your editor
 3. **Automatic**: The plugin handles upload and URL generation automatically
 
-### 📄 License
-This project is licensed under the [0BSD License](LICENSE) - see the LICENSE file for details.
-
-### 💖 Support
-If you find this plugin helpful, consider supporting its development:
-
-- ⭐ Star this repository
-- 🐛 Report bugs and suggest features
-- ☕ [Buy me a coffee](https://github.com/sponsors/MdSadiqMd)
-- 🔄 Share with other Obsidian users
+### License
+This project is licensed under the [BSD License](LICENSE) - see the LICENSE file for more details
 
 ---
 
@@ -92,6 +77,10 @@ If you find this plugin helpful, consider supporting its development:
 </p>
 
 <p align="center">
+  <a href="https://github.com/sponsors/MdSadiqMd">
+    <img src="https://img.shields.io/badge/Sponsor-❤️-ff69b4?style=for-the-badge&logo=github-sponsors" alt="Sponsor on GitHub">
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
   <a href="https://obsidian.md">
     <img src="https://img.shields.io/badge/Made%20for-Obsidian-8b6cef?style=for-the-badge&logo=obsidian" alt="Made for Obsidian">
   </a>
