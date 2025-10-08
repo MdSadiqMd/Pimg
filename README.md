@@ -25,6 +25,30 @@ A powerful Obsidian plugin that automatically uploads your images to GitHub Gist
 4. Click Install and Enable
 
 #### Step 2: Deploy the Cloudflare Worker
+
+##### **Option 1: Direct Deploy (Recommended)**
+
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/MdSadiqMd/Pimg-Obsidian-Worker)
+
+1. Click the "Deploy to Cloudflare Workers" button above
+2. Authenticate your accounts:
+   - Log in with your Cloudflare account if prompted
+   - Connect your GitHub account when requested
+3. Configure deployment settings:
+   - Follow the on-screen instructions to customize your deployment
+   - The system will automatically fork the repository to your GitHub account
+4. Complete deployment:
+   - Click "Deploy" to build and deploy your worker
+   - Wait for the deployment to complete (usually takes 1-2 minutes)
+5. Copy your worker URL:
+   - After successful deployment, you'll see your worker URL in the format: `https://pimg.<your-subdomain>.workers.dev`
+   - **Save this URL** - you'll need it for the Obsidian plugin configuration
+
+> 💡 **Tip:** The deploy button automatically handles repository forking, dependency installation, building, and deployment. No local setup required!
+
+
+##### **Option 2: Manual (Local) Deploy**
+
 1. **Clone the worker repository:**
    ```bash
    git clone https://github.com/MdSadiqMd/Pimg-Obsidian-Worker.git
@@ -36,17 +60,22 @@ A powerful Obsidian plugin that automatically uploads your images to GitHub Gist
    npm install
    ```
 
-3. **Login to Cloudflare:**
+3. **Authenticate with Cloudflare:**
    ```bash
    npx wrangler login
    ```
 
-4. **Deploy the worker:**
+4. **Deploy to Cloudflare Workers:**
    ```bash
    npm run deploy
    ```
+   _or_
+   ```bash
+   npx wrangler deploy
+   ```
 
-5. **Note your worker URL** (e.g., `https://pimg.your-subdomain.workers.dev`)
+5. **Copy your worker URL**  
+   After deployment, you'll find your public worker URL in the terminal output (e.g., `https://pimg.<your-subdomain>.workers.dev`). Use this in your Obsidian settings.
 
 #### Step 3: Create GitHub Personal Access Token
 1. Go to [GitHub Settings → Developer Settings → Personal Access Tokens](https://github.com/settings/tokens)
